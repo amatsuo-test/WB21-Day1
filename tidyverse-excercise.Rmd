@@ -1,6 +1,6 @@
 ---
 title: "Tidyverse Exercise"
-author: ""
+author: "Aki Matsuo"
 date: "22/03/2021"
 output: html_document
 ---
