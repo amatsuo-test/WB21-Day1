@@ -26,6 +26,7 @@ We will read the file "data/covid_us_county.csv.gz"
 
 ```{r}
 data_covid <- read_csv("data/covid_us_county.csv.gz", guess_max = 1e5)  
+# install.packages('data.table', 'R.utils')
 data_covid <- data.table::fread("data/covid_us_county.csv.gz") %>%
   as_tibble()
 
@@ -140,7 +141,7 @@ For each state, calculate the total number of cases/deaths for each day (Hint: g
 ```{r}
 data_covid_sub %>%
   group_by(state, date) %>%
-  summarize(sum(deaths), sum(cases)) %>%
+  summarize(sum(deaths), sum(cases), .groups = 'drop') %>%
   filter(date == max(date)) %>%
   arrange(desc(`sum(cases)`))
 
@@ -162,12 +163,12 @@ Now let's visualize the outputs using ggplot
 
 data_covid_sub %>%
   group_by(date) %>%
-  summarize(tot_deaths = sum(deaths), tot_cases = sum(cases)) %>%
+  summarize(tot_deaths = sum(deaths), tot_cases = sum(cases),  .groups = 'drop') %>%
   pivot_longer(cols = c(tot_deaths,tot_cases)) %>%
   ggplot(aes(x = date, y = value, colour = name)) + 
   geom_line() + 
-  scale_y_log10() + 
-  #scale_x_date(breaks = "months", labels = '%y-%m') +
+  scale_y_log10("Count") + 
+  scale_x_date("Date", breaks = "3 months", date_labels = '%b-%y') +
   theme_minimal() +
   theme(legend.position = "bottom")
   
@@ -179,6 +180,13 @@ data_covid_sub %>%
 ### Time series plot of total cases/deaths by the state
 
 ```{r}
+g <- data_covid_sub %>%
+  group_by(state_code, date) %>%
+  summarise(cases = sum(cases), .groups = 'drop') %>%
+  ggplot(aes(x = date, y = cases, color = state_code)) + 
+  geom_line() #+ 
+  #scale_y_log10()
+plotly::ggplotly(g)
 
 ```
 
@@ -188,5 +196,15 @@ data_covid_sub %>%
 How's the trend of the daily case increases. Which state look bad now?
 
 ```{r}
+g <- 
+  data_covid_sub %>%
+  filter(state_code %in% c("NY", "TX", "CA", "FL", "IL")) %>%
+  group_by(state_code, date) %>%
+  summarise(cases = sum(cases)) %>%
+  mutate(d_cases = cases - lag(cases)) %>%
+  ggplot(aes(x = date, y = d_cases, color = state_code)) + geom_line()
+
+  
+plotly::ggplotly(g)
 
 ```
