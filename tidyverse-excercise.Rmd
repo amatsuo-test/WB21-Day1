@@ -15,7 +15,7 @@ knitr::opts_chunk$set(echo = TRUE)
   - we need tidyverse
 
 ```{r}
-
+library(tidyverse)
 ```
 
 ## Section 1: Data description
@@ -25,7 +25,10 @@ knitr::opts_chunk$set(echo = TRUE)
 We will read the file "data/covid_us_county.csv.gz"
 
 ```{r}
-data_covid <- NA
+data_covid <- read_csv("data/covid_us_county.csv.gz", guess_max = 1e5)  
+data_covid <- data.table::fread("data/covid_us_county.csv.gz") %>%
+  as_tibble()
+
 
 ```
 
@@ -37,12 +40,18 @@ Now the data is in R workspace. Do the following
 ### Count the number of variabes and rows
 
 ```{r}
+data_covid %>% nrow()
+data_covid %>% ncol()
+
+data_covid %>% dim()
 
 ```
 
 ### Print out the first 6 rows of the data.frame
 
 ```{r}
+data_covid %>% glimpse()
+data_covid %>% slice(1:6)
 
 ```
 
@@ -53,6 +62,11 @@ Now the data is in R workspace. Do the following
 
 
 ```{r}
+data_covid %>% count(state)
+
+data_covid %>% group_by(state) %>% count()
+
+data_covid %>% pull(state) %>% unique()
 
 ```
 
@@ -64,7 +78,8 @@ Now the data is in R workspace. Do the following
 First remove the non-country entries
 
 ```{r}
-
+data_covid_sub <- data_covid %>%
+  filter(!is.na(fips))
 ```
 
 
@@ -74,6 +89,12 @@ Find the latest date of the data, then subset the data with only the newest date
 
 ```{r}
 
+data_covid_latest <- data_covid_sub %>%
+  group_by(fips) %>%
+  filter(date == max(date)) %>%
+  ungroup() #%>%
+  #count(date)
+
 ```
 
 ### Max cases/deaths
@@ -81,6 +102,13 @@ Find the latest date of the data, then subset the data with only the newest date
 Which county has the highest number of cases/deaths? What is the number?
 
 ```{r}
+data_covid_latest %>%
+  filter(deaths == max(deaths))
+
+data_covid_latest %>%
+  filter(deaths > 5000) %>%
+  arrange(desc(deaths)) %>%
+  head()
 
 ```
 
@@ -94,6 +122,14 @@ Find the 10 counties with the earliest recorded cases/deaths.
 
 ```{r}
 
+data_covid_sub %>%
+  group_by(fips) %>%
+  filter(cases > 0) %>%
+  filter(date == min(date)) %>%
+  ungroup() %>%
+  arrange(date) %>% head()
+
+
 ```
 
 ### Aggregate the number of death
@@ -102,6 +138,11 @@ For each state, calculate the total number of cases/deaths for each day (Hint: g
 
 
 ```{r}
+data_covid_sub %>%
+  group_by(state, date) %>%
+  summarize(sum(deaths), sum(cases)) %>%
+  filter(date == max(date)) %>%
+  arrange(desc(`sum(cases)`))
 
 ```
 
@@ -118,6 +159,19 @@ Now let's visualize the outputs using ggplot
 ### Time series plot of total cases/death in the US
 
 ```{r}
+
+data_covid_sub %>%
+  group_by(date) %>%
+  summarize(tot_deaths = sum(deaths), tot_cases = sum(cases)) %>%
+  pivot_longer(cols = c(tot_deaths,tot_cases)) %>%
+  ggplot(aes(x = date, y = value, colour = name)) + 
+  geom_line() + 
+  scale_y_log10() + 
+  #scale_x_date(breaks = "months", labels = '%y-%m') +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+  
+  #ggplot(aes(x = date, y = tot_cases)) + geom_line()
 
 ```
 
